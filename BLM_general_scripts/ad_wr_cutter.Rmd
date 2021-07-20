@@ -1,0 +1,59 @@
+---
+title: "wr_cutter_wdd"
+author: "Bryce Pulver"
+date: "7/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(sf)
+library(sp)
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(maptools)
+library(grid)
+library(tmap)
+library(tmaptools)
+library(mapview)
+library(USAboundaries) # has all state boundaries
+library(tigris) # for grabbing tons of US census data (we use it for county shapefiles)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# State and County Boundaries
+```{r}
+# Utah state boundary
+ut <- us_boundaries(type = 'state', state = "Utah")
+
+# County boundaries
+wdd_counties <- county_subdivisions(state = 49, county = c(003, 011, 045, 049, 051, 043, 023, 029, 033, 027)) %>% 
+  st_transform(crs = 4269)
+
+# Quick plot to get the data together
+plot(st_geometry(ut))
+plot(st_geometry(wdd_counties),add = T)
+```
+
+# Advertised Water Rights from the Division of Water Rights. There GIS data can be found [here] (https://opendata.gis.utah.gov/search?groupIds=4de5aefb5f6540348da4c633bd57cced&source=utah%20division%20of%20water%20rights)
+```{r}
+# Reading in the advertised water rights
+
+ad_wr <- st_read('data/in/070921_ad_wr.gdb') %>% 
+  st_transform(crs = 4269)
+
+# This is cutting the gdb to show only advertised water rights with in the specified counties and then filtering by date of publication.
+wdd_wr <- ad_wr[wdd_counties,] %>% 
+  mutate(pub_began = ymd(Pub_Began)) %>% 
+  filter(pub_began >= '2021-07-07')
+  
+mapview(wdd_wr)
+```
+
+# Newly cut and filtered set of water rights
+```{r}
+# Saving newly filtered data base
+st_write(wdd_wr, 'data/out/071321_wr_filter.shp')
+```
+
